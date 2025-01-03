@@ -10,7 +10,6 @@ AudioPilot is a Windows audio mixer application that allows users to control the
 - Mute individual applications
 - Real-time updates as new applications open or close
 - Clean and minimalistic interface
-- Ability to switch between different themes for a personalized experience
 
 ## Installation
 
