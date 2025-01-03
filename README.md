@@ -1,5 +1,7 @@
 # AudioPilot
 
+![Logo](src/assets/audiopilot.png)
+
 AudioPilot is a Windows audio mixer application that allows users to control the volume of open audio applications individually. With a simple and intuitive interface, users can easily manage audio sessions, mute specific applications, and adjust their volumes in real time.
 
 ## Features
