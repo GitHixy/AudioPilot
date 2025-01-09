@@ -1,13 +1,10 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
-    QWidget, QSlider, QLabel, QPushButton
+    QWidget, QSlider, QLabel, QPushButton, QFrame
 )
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QFont
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
 from audio_manager import AudioManager
-
-
 
 
 class AudioPilot(QMainWindow):
@@ -17,7 +14,7 @@ class AudioPilot(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
 
         # Set the window icon to the logo
-        self.setWindowIcon(QIcon('src/assets/audiopilot.png'))
+        self.setWindowIcon(QIcon('src/assets/audiopilot.ico'))
 
         # Initialize the audio manager and sessions
         self.audio_manager = AudioManager()
@@ -27,20 +24,63 @@ class AudioPilot(QMainWindow):
         # Main layout
         self.main_layout = QVBoxLayout()
 
+        # Master volume section (horizontal)
+        master_label = QLabel("Master Volume", self)
+        self.master_slider = QSlider(Qt.Orientation.Horizontal, self)
+        self.master_slider.setMinimum(0)
+        self.master_slider.setMaximum(100)
+        master_label.setStyleSheet("font-size: 16px; color: white; margin-top: 5px;")
+        # Set current master volume correctly as an integer
+        current_master_volume = int(self.audio_manager.get_master_volume())  # Convert to int before setting
+        self.master_slider.setValue(current_master_volume)  # Set slider value to actual master volume
+        self.master_slider.valueChanged.connect(self.master_slider_changed)  # Link to update master volume
+        
+        # Value label for Master Volume
+        self.master_value_label = QLabel(f"{current_master_volume}%", self)
+        self.master_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.master_value_label.setStyleSheet("color: white; font-size: 14px;")
+        
+        # Customize slider width size
+        self.master_slider.setFixedWidth(400)
+
+        # Layout for Master Volume
+        master_layout = QVBoxLayout()
+        master_layout.addWidget(master_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        master_layout.addWidget(self.master_slider, alignment=Qt.AlignmentFlag.AlignCenter)
+        master_layout.addWidget(self.master_value_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Add master layout to the main layout
+        self.main_layout.addLayout(master_layout)
+
+        # Add a horizontal divider (QFrame) between Master Volume and Application Volumes
+        divider = QFrame(self)
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setFrameShadow(QFrame.Shadow.Sunken)
+        divider.setStyleSheet("background-color: #333;")  # Customize divider color
+        self.main_layout.addWidget(divider)
+
+        # Title for Application Volumes section
+        self.app_title = QLabel("Application Volumes", self)
+        self.app_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.app_title.setStyleSheet("font-size: 16px; color: white; margin-top: 5px;")
+
+        # Add title and layout for app sliders
+        self.main_layout.addWidget(self.app_title)
+
         # Add Reset button
         reset_button = QPushButton("Show All Channels", self)
         reset_button.setStyleSheet("font-size: 12px; padding: 7px;")
         reset_button.clicked.connect(self.reset_hidden_channels)
         self.main_layout.addWidget(reset_button, alignment=Qt.AlignmentFlag.AlignRight)
 
-        # Layout for sliders
+        # Layout for sliders (applications)
         self.sliders_layout = QHBoxLayout()
         self.update_sliders()
 
         self.main_layout.addLayout(self.sliders_layout)
 
         # Footer
-        footer = QLabel("AudioPilot by GitHixy", self)
+        footer = QLabel("AudioPilot v1.0.1 by GitHixy", self)
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet("font-size: 13px; color: #666; padding: 5px;")
         self.main_layout.addWidget(footer)
@@ -64,10 +104,16 @@ class AudioPilot(QMainWindow):
                 widget.deleteLater()
 
         # Add sliders for each active session
-        for session in self.audio_sessions:
-            if session["name"] not in self.hidden_channels:
-                slider_widget = self.create_vertical_slider(session)
-                self.sliders_layout.addWidget(slider_widget)
+        visible_sessions = [session for session in self.audio_sessions if session["name"] not in self.hidden_channels]
+        for session in visible_sessions:
+            slider_widget = self.create_vertical_slider(session)
+            self.sliders_layout.addWidget(slider_widget)
+
+        # Hide the title if no sessions are visible
+        if visible_sessions:
+            self.app_title.show()
+        else:
+            self.app_title.hide()
 
     def create_vertical_slider(self, session):
         """Create a vertical slider with associated controls."""
@@ -148,8 +194,6 @@ class AudioPilot(QMainWindow):
             session.SimpleAudioVolume.SetMasterVolume(session.previous_volume, None)
             slider.setValue(int(previous_volume))  # Update the slider to previous volume
 
-
-
     def hide_channel(self, name):
         """Hide the selected channel."""
         self.hidden_channels.append(name)
@@ -161,7 +205,7 @@ class AudioPilot(QMainWindow):
         self.update_sliders()
 
     def check_new_sessions(self):
-        """Dynamically add new sessions and remove closed ones."""
+        """Dynamically add new sessions and remove closed ones.""" 
         current_sessions = self.audio_manager.get_audio_sessions()
 
         # Add new sessions
@@ -183,12 +227,14 @@ class AudioPilot(QMainWindow):
             ]
             self.update_sliders()
 
+    def master_slider_changed(self):
+        """Update the master volume when the master slider is changed."""
+        master_value = self.master_slider.value()
+        self.audio_manager.set_master_volume(master_value)
+        self.master_value_label.setText(f"{master_value}%") 
 
 if __name__ == "__main__":
     app = QApplication([])
     main_window = AudioPilot()
     main_window.show()
     app.exec()
-
-
-
