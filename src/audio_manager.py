@@ -2,7 +2,7 @@ import os
 import ctypes
 from ctypes import wintypes
 import win32gui
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, ISimpleAudioVolume, IAudioMeterInformation
 from comtypes import CLSCTX_ALL
 from PyQt6.QtGui import QPixmap, QImage
 
@@ -36,6 +36,16 @@ class AudioManager:
             }
             for session in sessions if session.Process
         ]
+    
+    def get_session_level(self, session):
+        """Get the current audio level (peak) of a session."""
+        try:
+            meter = session._ctl.QueryInterface(IAudioMeterInformation)
+            peak = meter.GetPeakValue()  
+            return int(peak * 100)  
+        except Exception as e:
+            print(f"Failed to get session level for {session.Process.name()}: {e}")
+            return 0
 
     def capitalize_name(self, name):
         """Capitalize the name of the application."""

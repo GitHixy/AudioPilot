@@ -11,6 +11,7 @@ AudioPilot is a Windows audio mixer application that allows users to control the
 - Real-time updates as new applications open or close
 - Clean and minimalistic interface
 - **Master Volume Control**: Added a master volume slider for controlling the overall system volume. (v1.0.1)
+- Added Peak-Meter (v1.0.2)
 
 ## Installation
 
@@ -32,7 +33,7 @@ There is no installation process; just download and run the application directly
 
 ## Version
 
-- **Version**: 1.0.1
+- **Version**: 1.0.2
 - **Date**: January 2025
 - **Author**: GitHixy
 
