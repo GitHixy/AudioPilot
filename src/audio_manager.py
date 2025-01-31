@@ -5,6 +5,9 @@ import win32gui
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, ISimpleAudioVolume, IAudioMeterInformation
 from comtypes import CLSCTX_ALL
 from PyQt6.QtGui import QPixmap, QImage
+import numpy as np
+import sounddevice as sd
+import scipy.signal
 
 
 class AudioManager:
@@ -14,6 +17,7 @@ class AudioManager:
             IAudioEndpointVolume._iid_, CLSCTX_ALL, None
         )
         self.volume = interface.QueryInterface(IAudioEndpointVolume)
+        self.eq_settings = {}  # Store EQ settings for each session
 
     def set_master_volume(self, level):
         """Set the master volume."""
@@ -112,5 +116,58 @@ class AudioManager:
 
         return pixmap
 
+    def set_eq(self, session_name, band, value):
+        """Set the EQ value for a specific band."""
+        if session_name not in self.eq_settings:
+            self.eq_settings[session_name] = [0] * 10  # Initialize 10 bands
+        self.eq_settings[session_name][band] = value
 
+    def get_eq(self, session_name):
+        """Get the EQ settings for a session."""
+        return self.eq_settings.get(session_name, [0] * 10)
 
+    def save_preset(self, session_name, preset_name):
+        """Save the current EQ settings as a preset."""
+        if session_name in self.eq_settings:
+            with open(f"{session_name}_{preset_name}.eq", "w") as f:
+                f.write(",".join(map(str, self.eq_settings[session_name])))
+
+    def load_preset(self, session_name, preset_name):
+        """Load an EQ preset."""
+        try:
+            with open(f"{session_name}_{preset_name}.eq", "r") as f:
+                self.eq_settings[session_name] = list(map(int, f.read().split(",")))
+        except FileNotFoundError:
+            print(f"Preset {preset_name} not found for session {session_name}")
+
+    def list_presets(self, session_name):
+        """List available presets for a session."""
+        presets = []
+        for file in os.listdir():
+            if file.startswith(session_name) and file.endswith(".eq"):
+                presets.append(file[len(session_name) + 1:-3])  # Extract preset name
+        return presets
+
+    def apply_eq(self, session_name):
+        """Apply the EQ settings to the audio output."""
+        eq_values = self.get_eq(session_name)
+        session = next((s for s in self.get_audio_sessions() if s["name"] == session_name), None)
+        if not session:
+            return
+
+        # Apply EQ settings directly to the session
+        def apply_band_pass_filter(audio_data, lowcut, highcut, fs, order=5):
+            nyquist = 0.5 * fs
+            low = lowcut / nyquist
+            high = highcut / nyquist
+            b, a = scipy.signal.butter(order, [low, high], btype='band')
+            y = scipy.signal.lfilter(b, a, audio_data)
+            return y
+
+        # Placeholder for actual EQ application logic
+        # Modify the audio data of the session directly using the appropriate audio APIs
+        # Example placeholder code:
+        # session["session"].SimpleAudioVolume.SetMasterVolume(eq_values[0] / 10.0, None)
+
+        # Note: The actual implementation will depend on the audio APIs you are using
+        # and how you can modify the audio data of the session directly

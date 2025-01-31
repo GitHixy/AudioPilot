@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
-    QWidget, QSlider, QLabel, QPushButton, QFrame, QProgressBar
+    QWidget, QSlider, QLabel, QPushButton, QFrame, QProgressBar, QInputDialog, QMessageBox
 )
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation
@@ -131,6 +131,7 @@ class AudioPilot(QMainWindow):
         slider.setMinimum(0)
         slider.setMaximum(100)
         slider.setValue(int(session["volume"]))
+        slider.setFixedHeight(150)  # Set a fixed height for alignment
         slider.valueChanged.connect(lambda value, s=session: self.slider_value_changed(value, s))
         slider_and_bar_layout.addWidget(slider)
 
@@ -154,10 +155,70 @@ class AudioPilot(QMainWindow):
         hide_button.clicked.connect(lambda _, name=session["name"]: self.hide_channel(name))
         layout.addWidget(hide_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        # Add EQ sliders
+        eq_layout = QHBoxLayout()
+        frequencies = ["32Hz", "64Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz"]
+        session["eq_sliders"] = []
+        for band in range(10):
+            eq_slider_layout = QVBoxLayout()
+            eq_slider = QSlider(Qt.Orientation.Vertical, self)
+            eq_slider.setMinimum(-10)
+            eq_slider.setMaximum(10)
+            eq_slider.setValue(self.audio_manager.get_eq(session["name"])[band])
+            eq_slider.setFixedHeight(100)  # Set a fixed height for alignment
+            eq_slider.valueChanged.connect(lambda value, s=session, b=band: self.eq_slider_changed(value, s, b))
+            eq_slider_layout.addWidget(eq_slider)
+
+            freq_label = QLabel(frequencies[band], self)
+            freq_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            freq_label.setStyleSheet("color: white; font-size: 10px;")
+            eq_slider_layout.addWidget(freq_label)
+
+            eq_layout.addLayout(eq_slider_layout)
+            session["eq_sliders"].append(eq_slider)
+        layout.addLayout(eq_layout)
+
+        # Add preset buttons
+        preset_layout = QHBoxLayout()
+        save_preset_button = QPushButton("Save Preset", self)
+        save_preset_button.clicked.connect(lambda _, s=session: self.save_preset(s))
+        preset_layout.addWidget(save_preset_button)
+
+        load_preset_button = QPushButton("Load Preset", self)
+        load_preset_button.clicked.connect(lambda _, s=session: self.load_preset(s))
+        preset_layout.addWidget(load_preset_button)
+        layout.addLayout(preset_layout)
+
         slider_widget = QWidget()
         slider_widget.setLayout(layout)
         session["widget"] = slider_widget  # Store reference to widget for safe deletion
         return slider_widget
+
+    def eq_slider_changed(self, value, session, band):
+        self.audio_manager.set_eq(session["name"], band, value)
+        self.audio_manager.apply_eq(session["name"])
+
+    def save_preset(self, session):
+        preset_name, ok = QInputDialog.getText(self, "Save Preset", "Enter preset name:")
+        if ok and preset_name:
+            self.audio_manager.save_preset(session["name"], preset_name)
+
+    def load_preset(self, session):
+        presets = self.audio_manager.list_presets(session["name"])
+        if not presets:
+            QMessageBox.information(self, "Load Preset", "No presets available.")
+            return
+
+        preset_name, ok = QInputDialog.getItem(self, "Load Preset", "Select preset:", presets, 0, False)
+        if ok and preset_name:
+            self.audio_manager.load_preset(session["name"], preset_name)
+            self.update_eq_sliders(session)  # Refresh sliders to reflect loaded preset
+            self.audio_manager.apply_eq(session["name"])
+
+    def update_eq_sliders(self, session):
+        eq_values = self.audio_manager.get_eq(session["name"])
+        for i, eq_slider in enumerate(session["eq_sliders"]):
+            eq_slider.setValue(eq_values[i])
 
     def create_output_level_bar(self):
         """Create a bar to show audio output level."""
